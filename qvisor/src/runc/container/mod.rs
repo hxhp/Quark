@@ -30,60 +30,60 @@ use super::oci::LinuxDeviceType;
 lazy_static! {
     static ref DEFAULT_DEVICES: Vec<LinuxDevice> = {
         let mut v = Vec::new();
-        v.push(LinuxDevice {
-            path: "/dev/null".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 1,
-            minor: 3,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
-        v.push(LinuxDevice {
-            path: "/dev/zero".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 1,
-            minor: 5,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
-        v.push(LinuxDevice {
-            path: "/dev/full".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 1,
-            minor: 7,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
-        v.push(LinuxDevice {
-            path: "/dev/tty".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 5,
-            minor: 0,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
-        v.push(LinuxDevice {
-            path: "/dev/urandom".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 1,
-            minor: 9,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
-        v.push(LinuxDevice {
-            path: "/dev/random".to_string(),
-            typ: LinuxDeviceType::c,
-            major: 1,
-            minor: 8,
-            file_mode: Some(0o066),
-            uid: None,
-            gid: None,
-        });
+        // v.push(LinuxDevice {
+        //     path: "/dev/null".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 1,
+        //     minor: 3,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
+        // v.push(LinuxDevice {
+        //     path: "/dev/zero".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 1,
+        //     minor: 5,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
+        // v.push(LinuxDevice {
+        //     path: "/dev/full".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 1,
+        //     minor: 7,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
+        // v.push(LinuxDevice {
+        //     path: "/dev/tty".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 5,
+        //     minor: 0,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
+        // v.push(LinuxDevice {
+        //     path: "/dev/urandom".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 1,
+        //     minor: 9,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
+        // v.push(LinuxDevice {
+        //     path: "/dev/random".to_string(),
+        //     typ: LinuxDeviceType::c,
+        //     major: 1,
+        //     minor: 8,
+        //     file_mode: Some(0o066),
+        //     uid: None,
+        //     gid: None,
+        // });
         v
     };
 }

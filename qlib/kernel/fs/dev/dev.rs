@@ -104,8 +104,8 @@ fn NewTestProxyDevice(iops: ProxyDevice, msrc: &Arc<QMutex<MountSource>>) -> Ino
         DeviceId: deviceId,
         InodeId: inodeId,
         BlockSize: MemoryDef::PAGE_SIZE as i64,
-        DeviceFileMajor: MEM_DEV_MAJOR,
-        DeviceFileMinor: NULL_DEV_MINOR,
+        DeviceFileMajor: 195,
+        DeviceFileMinor: 255,
     };
 
     let inodeInternal = InodeIntern {
@@ -280,58 +280,58 @@ pub fn NewDev(task: &Task, msrc: &Arc<QMutex<MountSource>>) -> Inode {
         NewSymlink(task, &"/proc/self/fd/2".to_string(), msrc),
     );
 
-    contents.insert(
-        "null".to_string(),
-        NewNullDevice(
-            NullDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
-            msrc,
-        ),
-    );
+    // contents.insert(
+    //     "null".to_string(),
+    //     NewNullDevice(
+    //         NullDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+    //         msrc,
+    //     ),
+    // );
 
     contents.insert(
-        "proxy".to_string(),
+        "nvidiactl".to_string(),
         NewTestProxyDevice(
             ProxyDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
             msrc,
         ),
     );
 
-    contents.insert(
-        "zero".to_string(),
-        NewZeroDevice(
-            ZeroDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
-            msrc,
-        ),
-    );
-    contents.insert(
-        "full".to_string(),
-        NewFullDevice(
-            FullDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
-            msrc,
-        ),
-    );
+    // contents.insert(
+    //     "zero".to_string(),
+    //     NewZeroDevice(
+    //         ZeroDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+    //         msrc,
+    //     ),
+    // );
+    // contents.insert(
+    //     "full".to_string(),
+    //     NewFullDevice(
+    //         FullDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+    //         msrc,
+    //     ),
+    // );
 
-    contents.insert(
-        "shm".to_string(),
-        Inode::NewTmpDirInode(task, "/dev/shm").expect("create /dev/shm fail"),
-    );
+    // contents.insert(
+    //     "shm".to_string(),
+    //     Inode::NewTmpDirInode(task, "/dev/shm").expect("create /dev/shm fail"),
+    // );
 
-    contents.insert(
-        "random".to_string(),
-        NewRandomDevice(
-            RandomDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
-            msrc,
-            RANDOM_DEV_MINOR,
-        ),
-    );
-    contents.insert(
-        "urandom".to_string(),
-        NewRandomDevice(
-            RandomDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
-            msrc,
-            URANDOM_DEV_MINOR,
-        ),
-    );
+    // contents.insert(
+    //     "random".to_string(),
+    //     NewRandomDevice(
+    //         RandomDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+    //         msrc,
+    //         RANDOM_DEV_MINOR,
+    //     ),
+    // );
+    // contents.insert(
+    //     "urandom".to_string(),
+    //     NewRandomDevice(
+    //         RandomDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+    //         msrc,
+    //         URANDOM_DEV_MINOR,
+    //     ),
+    // );
 
     // A devpts is typically mounted at /dev/pts to provide
     // pseudoterminal support. Place an empty directory there for
@@ -347,13 +347,13 @@ pub fn NewDev(task: &Task, msrc: &Arc<QMutex<MountSource>>) -> Inode {
     //
     // If no devpts is mounted, this will simply be a dangling
     // symlink, which is fine.
-    contents.insert(
-        "ptmx".to_string(),
-        NewSymlink(task, &"pts/ptmx".to_string(), msrc),
-    );
+    // contents.insert(
+    //     "ptmx".to_string(),
+    //     NewSymlink(task, &"pts/ptmx".to_string(), msrc),
+    // );
 
-    let ttyDevice = TTYDevice::New(task, &ROOT_OWNER, &FileMode(0o0666));
-    contents.insert("tty".to_string(), NewTTYDevice(ttyDevice, msrc));
+    // let ttyDevice = TTYDevice::New(task, &ROOT_OWNER, &FileMode(0o0666));
+    // contents.insert("tty".to_string(), NewTTYDevice(ttyDevice, msrc));
 
     let iops = Dir::New(
         task,
