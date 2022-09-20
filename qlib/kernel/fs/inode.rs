@@ -50,6 +50,7 @@ use super::overlay::*;
 use crate::qlib::kernel::fs::dev::full::FullDevice;
 use crate::qlib::kernel::fs::dev::null::NullDevice;
 use crate::qlib::kernel::fs::dev::proxyfile::ProxyDevice;
+use crate::qlib::kernel::fs::dev::nvidiauvm::NvidiaUvmDevice;
 use crate::qlib::kernel::fs::dev::random::RandomDevice;
 use crate::qlib::kernel::fs::dev::tty::TTYDevice;
 use crate::qlib::kernel::fs::dev::zero::ZeroDevice;
@@ -148,6 +149,7 @@ pub enum IopsType {
     SymlinkNode,
     SimpleFileInode,
     ProxyDevice,
+    NvidiaUvmDevice
 }
 
 #[enum_dispatch]
@@ -156,6 +158,7 @@ pub enum Iops {
     FullDevice(FullDevice),
     NullDevice(NullDevice),
     ProxyDevice(ProxyDevice),
+    NvidiaUvmDevice(NvidiaUvmDevice),
     RandomDevice(RandomDevice),
     TTYDevice(TTYDevice),
     ZeroDevice(ZeroDevice),
@@ -210,7 +213,14 @@ impl Iops {
             Self::ProxyDevice(inner) => Some(inner.clone()),
             _ => None,
         }
-    } 
+    }
+
+    pub fn NvidiaUvmDevice(&self) -> Option<NvidiaUvmDevice> {
+        match self {
+            Self::NvidiaUvmDevice(inner) => Some(inner.clone()),
+            _ => None,
+        }
+    }
 
     pub fn ZeroDevice(&self) -> Option<ZeroDevice> {
         match self {

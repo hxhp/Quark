@@ -33,6 +33,7 @@ use super::random::*;
 use super::tty::*;
 use super::zero::*;
 use super::proxyfile::*;
+use super::nvidiauvm::*;
 
 const MEM_DEV_MAJOR: u16 = 1;
 
@@ -95,7 +96,7 @@ fn NewNullDevice(iops: NullDevice, msrc: &Arc<QMutex<MountSource>>) -> Inode {
     return Inode(Arc::new(QMutex::new(inodeInternal)));
 }
 
-fn NewTestProxyDevice(iops: ProxyDevice, msrc: &Arc<QMutex<MountSource>>) -> Inode {
+fn NewNvidiaCtlDevice(iops: ProxyDevice, msrc: &Arc<QMutex<MountSource>>) -> Inode {
     let deviceId = DEV_DEVICE.lock().id.DeviceID();
     let inodeId = DEV_DEVICE.lock().NextIno();
 
@@ -106,6 +107,32 @@ fn NewTestProxyDevice(iops: ProxyDevice, msrc: &Arc<QMutex<MountSource>>) -> Ino
         BlockSize: MemoryDef::PAGE_SIZE as i64,
         DeviceFileMajor: 195,
         DeviceFileMinor: 255,
+    };
+
+    let inodeInternal = InodeIntern {
+        UniqueId: NewUID(),
+        InodeOp: iops.into(),
+        StableAttr: stableAttr,
+        LockCtx: LockCtx::default(),
+        MountSource: msrc.clone(),
+        Overlay: None,
+        ..Default::default()
+    };
+
+    return Inode(Arc::new(QMutex::new(inodeInternal)));
+}
+
+fn NewNvidiaUvmDevice(iops: NvidiaUvmDevice, msrc: &Arc<QMutex<MountSource>>) -> Inode {
+    let deviceId = DEV_DEVICE.lock().id.DeviceID();
+    let inodeId = DEV_DEVICE.lock().NextIno();
+
+    let stableAttr = StableAttr {
+        Type: InodeType::CharacterDevice,
+        DeviceId: deviceId,
+        InodeId: inodeId,
+        BlockSize: MemoryDef::PAGE_SIZE as i64,
+        DeviceFileMajor: 507,
+        DeviceFileMinor: 0,
     };
 
     let inodeInternal = InodeIntern {
@@ -290,8 +317,16 @@ pub fn NewDev(task: &Task, msrc: &Arc<QMutex<MountSource>>) -> Inode {
 
     contents.insert(
         "nvidiactl".to_string(),
-        NewTestProxyDevice(
+        NewNvidiaCtlDevice(
             ProxyDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+            msrc,
+        ),
+    );
+
+    contents.insert(
+        "nvidia-uvm".to_string(),
+        NewNvidiaUvmDevice(
+            NvidiaUvmDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
             msrc,
         ),
     );

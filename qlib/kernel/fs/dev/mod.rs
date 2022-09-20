@@ -20,6 +20,7 @@ pub mod random;
 pub mod tty;
 pub mod zero;
 pub mod proxyfile;
+pub mod nvidiauvm;
 
 use crate::qlib::mutex::*;
 use alloc::sync::Arc;

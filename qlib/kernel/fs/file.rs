@@ -51,6 +51,7 @@ use crate::qlib::kernel::fs::timerfd::TimerOperations;
 use crate::qlib::kernel::fs::dev::full::FullFileOperations;
 use crate::qlib::kernel::fs::dev::null::NullFileOperations;
 use crate::qlib::kernel::fs::dev::proxyfile::ProxyFileOperations;
+use crate::qlib::kernel::fs::dev::nvidiauvm::NvidiaUvmFileOperations;
 use crate::qlib::kernel::fs::dev::random::RandomFileOperations;
 use crate::qlib::kernel::fs::dev::tty::TTYFileOperations;
 use crate::qlib::kernel::fs::dev::zero::ZeroFileOperations;
@@ -302,7 +303,8 @@ pub enum FileOpsType {
     DynamicDirFileOperations,
     SignalOperation,
     InotifyFileOperations,
-    ProxyFileOperations
+    ProxyFileOperations,
+    NvidiaUvmFileOperations
 }
 
 #[enum_dispatch]
@@ -314,6 +316,7 @@ pub enum FileOps {
     FullFileOperations(FullFileOperations),
     NullFileOperations(NullFileOperations),
     ProxyFileOperations(ProxyFileOperations),
+    NvidiaUvmFileOperations(NvidiaUvmFileOperations),
     RandomFileOperations(RandomFileOperations),
     TTYFileOperations(TTYFileOperations),
     ZeroFileOperations(ZeroFileOperations),
