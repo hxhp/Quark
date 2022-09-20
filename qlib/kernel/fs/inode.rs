@@ -51,6 +51,7 @@ use crate::qlib::kernel::fs::dev::full::FullDevice;
 use crate::qlib::kernel::fs::dev::null::NullDevice;
 use crate::qlib::kernel::fs::dev::proxyfile::ProxyDevice;
 use crate::qlib::kernel::fs::dev::nvidiauvm::NvidiaUvmDevice;
+use crate::qlib::kernel::fs::dev::nvidia0::Nvidia0Device;
 use crate::qlib::kernel::fs::dev::random::RandomDevice;
 use crate::qlib::kernel::fs::dev::tty::TTYDevice;
 use crate::qlib::kernel::fs::dev::zero::ZeroDevice;
@@ -149,7 +150,8 @@ pub enum IopsType {
     SymlinkNode,
     SimpleFileInode,
     ProxyDevice,
-    NvidiaUvmDevice
+    NvidiaUvmDevice,
+    Nvidia0Device
 }
 
 #[enum_dispatch]
@@ -159,6 +161,7 @@ pub enum Iops {
     NullDevice(NullDevice),
     ProxyDevice(ProxyDevice),
     NvidiaUvmDevice(NvidiaUvmDevice),
+    Nvidia0Device(Nvidia0Device),
     RandomDevice(RandomDevice),
     TTYDevice(TTYDevice),
     ZeroDevice(ZeroDevice),
@@ -218,6 +221,13 @@ impl Iops {
     pub fn NvidiaUvmDevice(&self) -> Option<NvidiaUvmDevice> {
         match self {
             Self::NvidiaUvmDevice(inner) => Some(inner.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn Nvidia0Device(&self) -> Option<Nvidia0Device> {
+        match self {
+            Self::Nvidia0Device(inner) => Some(inner.clone()),
             _ => None,
         }
     }

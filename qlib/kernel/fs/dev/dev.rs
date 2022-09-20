@@ -34,6 +34,7 @@ use super::tty::*;
 use super::zero::*;
 use super::proxyfile::*;
 use super::nvidiauvm::*;
+use super::nvidia0::*;
 
 const MEM_DEV_MAJOR: u16 = 1;
 
@@ -132,6 +133,32 @@ fn NewNvidiaUvmDevice(iops: NvidiaUvmDevice, msrc: &Arc<QMutex<MountSource>>) ->
         InodeId: inodeId,
         BlockSize: MemoryDef::PAGE_SIZE as i64,
         DeviceFileMajor: 507,
+        DeviceFileMinor: 0,
+    };
+
+    let inodeInternal = InodeIntern {
+        UniqueId: NewUID(),
+        InodeOp: iops.into(),
+        StableAttr: stableAttr,
+        LockCtx: LockCtx::default(),
+        MountSource: msrc.clone(),
+        Overlay: None,
+        ..Default::default()
+    };
+
+    return Inode(Arc::new(QMutex::new(inodeInternal)));
+}
+
+fn NewNvidia0Device(iops: Nvidia0Device, msrc: &Arc<QMutex<MountSource>>) -> Inode {
+    let deviceId = DEV_DEVICE.lock().id.DeviceID();
+    let inodeId = DEV_DEVICE.lock().NextIno();
+
+    let stableAttr = StableAttr {
+        Type: InodeType::CharacterDevice,
+        DeviceId: deviceId,
+        InodeId: inodeId,
+        BlockSize: MemoryDef::PAGE_SIZE as i64,
+        DeviceFileMajor: 195,
         DeviceFileMinor: 0,
     };
 
@@ -327,6 +354,14 @@ pub fn NewDev(task: &Task, msrc: &Arc<QMutex<MountSource>>) -> Inode {
         "nvidia-uvm".to_string(),
         NewNvidiaUvmDevice(
             NvidiaUvmDevice::New(task, &ROOT_OWNER, &FileMode(0o0666)),
+            msrc,
+        ),
+    );
+
+    contents.insert(
+        "nvidia0".to_string(),
+        NewNvidia0Device(
+            Nvidia0Device::New(task, &ROOT_OWNER, &FileMode(0o0666)),
             msrc,
         ),
     );

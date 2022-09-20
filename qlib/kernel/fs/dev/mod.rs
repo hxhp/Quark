@@ -21,6 +21,7 @@ pub mod tty;
 pub mod zero;
 pub mod proxyfile;
 pub mod nvidiauvm;
+pub mod nvidia0;
 
 use crate::qlib::mutex::*;
 use alloc::sync::Arc;
