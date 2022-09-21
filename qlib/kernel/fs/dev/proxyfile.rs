@@ -289,6 +289,9 @@ impl InodeOperations for ProxyDevice {
 
         let (fd, fstat) = OpenAt(devfd, "nvidiactl", flags.ToLinux())?;
 
+        CTL_HOST_FD.store(fd, Ordering::Relaxed);
+        error!("CONTROL host_fd {}", fd);
+
         let fops = ProxyFileOperations::NewFromfd(task, fd, &fstat)?;
 
         let f = FileInternal {
@@ -383,6 +386,8 @@ pub struct ProxyFileOperations {
     pub InodeOp: HostInodeOp,
 }
 
+static CTL_HOST_FD: AtomicI32 = AtomicI32::new(0);
+
 impl ProxyFileOperations {
     pub fn NewFromfd(task: &Task, fd: i32, fstat: &LibcStat) -> Result<Self> {
         let fileOwner = task.FileOwner();
@@ -409,6 +414,10 @@ impl ProxyFileOperations {
         return Ok(Self {
             InodeOp: iops
         })
+    }
+
+    pub fn CtrlFd() -> i32 {
+        return CTL_HOST_FD.load(Ordering::Relaxed);
     }
     
     pub fn Fd(&self) -> i32 {
@@ -514,8 +523,6 @@ impl FileOperations for ProxyFileOperations {
             return Err(Error::SysError(SysErr::ENOTTY));
         }
 
-        static CTL_HOST_FD: AtomicI32 = AtomicI32::new(0);
-
         let mut size: u32 = ((request >> 16) as u32) & 16383;
         if request == 0x30000001 { size = 16; }
         if request == 0x27 { size = 8; }
@@ -525,29 +532,11 @@ impl FileOperations for ProxyFileOperations {
         let hostIops = self.InodeOp.clone();
         let hostfd = hostIops.HostFd();
 
-        if request == 0xc04846d2 {
-            CTL_HOST_FD.store(hostfd, Ordering::Relaxed);
-            error!("CONTROL fd/host_fd {}/{}", fd, hostfd);
-        }
-
-        if request == 0xc00446c9 {
-            let mut data: nv_ioctl_register_fd = task.CopyInObj(val)?;
-            error!("BEFORE, fd: {}", data.ctl_fd);
-            data.ctl_fd = CTL_HOST_FD.load(Ordering::Relaxed);
-            error!("AFTER, fd: {}", data.ctl_fd);
-            let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-        
-            if res < 0 {
-                error!("IOCTL failed!!! res {} ", res);
-                return Err(Error::SysError(-res as i32));
-            }
-            return Ok(());
-        }
-
         let _x: BTreeMap<u32, u32> = [
             (0, 4),
             (1, 4),
             (128, 56),
+            (8320, 4),
         ].iter().cloned().collect();
 
         if request == 0xc020462b {
@@ -583,7 +572,7 @@ impl FileOperations for ProxyFileOperations {
                     return Ok(());
                 },
                 None => {
-                    error!("Cannot find pAllocParms size!!!");
+                    error!("Cannot find pAllocParms size for hClass {}!!!", data.hClass);
                 }
             }
         }

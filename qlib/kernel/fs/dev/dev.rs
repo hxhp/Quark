@@ -132,7 +132,7 @@ fn NewNvidiaUvmDevice(iops: NvidiaUvmDevice, msrc: &Arc<QMutex<MountSource>>) ->
         DeviceId: deviceId,
         InodeId: inodeId,
         BlockSize: MemoryDef::PAGE_SIZE as i64,
-        DeviceFileMajor: 507,
+        DeviceFileMajor: 506,
         DeviceFileMinor: 0,
     };
 

@@ -45,9 +45,8 @@ use crate::qlib::kernel::fs::filesystems::*;
 use crate::qlib::kernel::fs::host::fs::*;
 use crate::qlib::kernel::fs::host::diriops::*;
 
-use core::sync::atomic::{AtomicI32, Ordering};
 use super::super::super::Kernel::HostSpace;
-use alloc::collections::btree_map::BTreeMap;
+use super::proxyfile::ProxyFileOperations;
 
 pub type NvHandle = u32;
 
@@ -514,26 +513,16 @@ impl FileOperations for Nvidia0Operations {
             return Err(Error::SysError(SysErr::ENOTTY));
         }
 
-        static CTL_HOST_FD: AtomicI32 = AtomicI32::new(0);
-
-        let mut size: u32 = ((request >> 16) as u32) & 16383;
-        if request == 0x30000001 { size = 16; }
-        if request == 0x27 { size = 8; }
-
+        let size: u32 = ((request >> 16) as u32) & 16383;
         error!("LOOKATHERE!!! fd {}, request {:x}, val {:x}, size: {}", fd, request, val, size);
 
         let hostIops = self.InodeOp.clone();
         let hostfd = hostIops.HostFd();
 
-        if request == 0xc04846d2 {
-            CTL_HOST_FD.store(hostfd, Ordering::Relaxed);
-            error!("CONTROL fd/host_fd {}/{}", fd, hostfd);
-        }
-
         if request == 0xc00446c9 {
             let mut data: nv_ioctl_register_fd = task.CopyInObj(val)?;
             error!("BEFORE, fd: {}", data.ctl_fd);
-            data.ctl_fd = CTL_HOST_FD.load(Ordering::Relaxed);
+            data.ctl_fd = ProxyFileOperations::CtrlFd();
             error!("AFTER, fd: {}", data.ctl_fd);
             let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
         
@@ -541,154 +530,6 @@ impl FileOperations for Nvidia0Operations {
                 error!("IOCTL failed!!! res {} ", res);
                 return Err(Error::SysError(-res as i32));
             }
-            return Ok(());
-        }
-
-        let _x: BTreeMap<u32, u32> = [
-            (0, 4),
-            (1, 4),
-            (128, 56),
-        ].iter().cloned().collect();
-
-        if request == 0xc020462b {
-            if size == 32 {
-                let mut data: NVOS21_PARAMETERS = task.CopyInObj(val)?;
-                let _res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-                task.CopyOutObj(&data, val)?;
-                return Ok(());
-                //let a = x.get(&data.hClass);
-                //let mut data1: Vec<u8> = task.CopyInVec(data.pAllocParms, a as usize)?;
-                //data.pAllocParms = data1;
-            }
-        }
-        else if request == 0xc028462b {
-            let mut data: NVOS64_PARAMETERS = task.CopyInObj(val)?;
-            match _x.get(&data.hClass) {
-                Some(sz) => {
-                    error!("FOUND size for {}: {}", data.hClass, sz);
-                    let tmp = data.pAllocParms;
-                    let buffer: Vec<u8> = task.CopyInVec(data.pAllocParms, *sz as usize)?;
-                    data.pAllocParms = &buffer[0] as *const _ as u64;
-            
-                    let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-                
-                    if res < 0 {
-                        error!("IOCTL failed!!! res {} ", res);
-                        return Err(Error::SysError(-res as i32));
-                    }
-
-                    task.CopyOutSlice(&buffer, tmp, *sz as usize)?;
-                    data.pAllocParms = tmp;
-                    task.CopyOutObj(&data, val)?;
-                    return Ok(());
-                },
-                None => {
-                    error!("Cannot find pAllocParms size!!!");
-                }
-            }
-        }
-        else if request == 0xc020462a {
-            let mut data: NVOS54_PARAMETERS = task.CopyInObj(val)?;
-            error!("NVOS54_PARAMETERS, BEFORE cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
-
-            if data.cmd == 0x101 {
-                let mut versions: NV0000_CTRL_SYSTEM_GET_BUILD_VERSION_PARAMS = task.CopyInObj(data.params)?;
-                error!("sizeOfStrings={}, pDriverVersionBuffer={:x}, pVersionBuffer={:x}, pTitleBuffer={:x}",
-                versions.sizeOfStrings, versions.pDriverVersionBuffer, versions.pVersionBuffer, versions.pTitleBuffer);
-                let usrAddr1 = versions.pDriverVersionBuffer;
-                let usrAddr2 = versions.pVersionBuffer;
-                let usrAddr3 = versions.pTitleBuffer;
-                let buf1: Vec<u8> = task.CopyInVec(versions.pDriverVersionBuffer, versions.sizeOfStrings as usize)?;
-                let buf2: Vec<u8> = task.CopyInVec(versions.pVersionBuffer, versions.sizeOfStrings as usize)?;
-                let buf3: Vec<u8> = task.CopyInVec(versions.pTitleBuffer, versions.sizeOfStrings as usize)?;
-                versions.pDriverVersionBuffer = &buf1[0] as *const _ as u64;
-                versions.pVersionBuffer = &buf2[0] as *const _ as u64;
-                versions.pTitleBuffer = &buf3[0] as *const _ as u64;
-                let tmp = data.params;
-                data.params = &versions as *const _ as u64;
-                let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-
-                if res < 0 {
-                    error!("IOCTL failed!!! res {} ", res);
-                    return Err(Error::SysError(-res as i32));
-                }
-
-                task.CopyOutSlice(&buf1, usrAddr1, versions.sizeOfStrings as usize)?;
-                task.CopyOutSlice(&buf2, usrAddr2, versions.sizeOfStrings as usize)?;
-                task.CopyOutSlice(&buf3, usrAddr3, versions.sizeOfStrings as usize)?;
-                versions.pDriverVersionBuffer = usrAddr1;
-                versions.pVersionBuffer = usrAddr2;
-                versions.pTitleBuffer = usrAddr3;
-
-                data.params = tmp;
-                task.CopyOutObj(&versions, data.params)?;
-                task.CopyOutObj(&data, val)?;
-                return Ok(());
-            }
-            else if data.cmd == 0x801401 {
-                let mut caps: NV0080_CTRL_HOST_GET_CAPS_PARAMS = task.CopyInObj(data.params)?;
-                let tbl = caps.capsTbl;
-                let buf: Vec<u8> = task.CopyInVec(caps.capsTbl, 3)?;
-                caps.capsTbl = &buf[0] as *const _ as u64;
-                let tmp = data.params;
-                data.params = &caps as *const _ as u64;
-                let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-
-                if res < 0 {
-                    error!("IOCTL failed!!! res {} ", res);
-                    return Err(Error::SysError(-res as i32));
-                }
-
-                task.CopyOutSlice(&buf, tbl, 3)?;
-                caps.capsTbl = tbl;
-
-                data.params = tmp;
-                task.CopyOutObj(&caps, data.params)?;
-                task.CopyOutObj(&data, val)?;
-                return Ok(());
-            }
-            else if data.cmd == 0x800201 {
-                let mut cl: NV0080_CTRL_GPU_GET_CLASSLIST_PARAMS = task.CopyInObj(data.params)?;
-                let tbl = cl.classList;
-                if tbl != 0 {
-                    let buf: Vec<u8> = task.CopyInVec(tbl, 4*cl.numClasses as usize)?;
-                    cl.classList = &buf[0] as *const _ as u64;
-                    let tmp = data.params;
-                    data.params = &cl as *const _ as u64;
-                    let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-
-                    if res < 0 {
-                        error!("IOCTL failed!!! res {} ", res);
-                        return Err(Error::SysError(-res as i32));
-                    }
-
-                    task.CopyOutSlice(&buf, tbl, 4*cl.numClasses as usize)?;
-                    cl.classList = tbl;
-
-                    data.params = tmp;
-                    task.CopyOutObj(&cl, data.params)?;
-                    task.CopyOutObj(&data, val)?;
-                    return Ok(());
-                }
-            }
-            
-            //let mut data: NVOS54_PARAMETERS = task.CopyInObj(val)?;
-            let tmp = data.params;
-            let buffer: Vec<u8> = task.CopyInVec(data.params, data.paramsSize as usize)?;
-                
-            data.params = &buffer[0] as *const _ as u64;
-                
-            let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-                
-            if res < 0 {
-                error!("IOCTL failed!!! res {} ", res);
-                return Err(Error::SysError(-res as i32));
-            }
-
-            task.CopyOutSlice(&buffer, tmp, data.paramsSize as usize)?;
-            data.params = tmp;
-            error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
-            task.CopyOutObj(&data, val)?;
             return Ok(());
         }
 

@@ -451,10 +451,9 @@ impl FileOperations for NvidiaUvmFileOperations {
         let hostIops = self.InodeOp.clone();
         let hostfd = hostIops.HostFd();
 
-        let mut res: i64 = 0;
         if size > 0 {
             let mut data: Vec<u8> = task.CopyInVec(val, size as usize)?;
-            res = HostSpace::IoCtl(hostfd, request, &mut data[0] as *const _ as u64);
+            let res = HostSpace::IoCtl(hostfd, request, &mut data[0] as *const _ as u64);
         
             if res < 0 {
                 error!("IOCTL failed!!! res {} ", res);
@@ -462,7 +461,7 @@ impl FileOperations for NvidiaUvmFileOperations {
             }
             task.CopyOutSlice(&data, val, size as usize)?;
         } else {
-            res = HostSpace::IoCtl(hostfd, request, val);
+            let res = HostSpace::IoCtl(hostfd, request, val);
         
             if res < 0 {
                 error!("IOCTL failed!!! res {} ", res);
