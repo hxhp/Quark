@@ -443,8 +443,11 @@ impl FileOperations for NvidiaUvmFileOperations {
 
         let mut size: u32 = ((request >> 16) as u32) & 16383;
         if request == 0x30000001 { size = 16; }
-        if request == 0x30000002 { size = 0; }
-        if request == 0x27 { size = 8; }
+        if request == 0x30000002 { size = 0; } 
+        if request == 0x27 { size = 8; } // size of UVM_PAGEABLE_MEM_ACCESS_PARAMS
+        if request == 0x25 { size = 40; } // size of UVM_REGISTER_GPU_PARAMS
+        if request == 0x37 { size = 20; } // size of UVM_DISABLE_SYSTEM_WIDE_ATOMICS_PARAMS
+        if request == 0x17 { size = 16; } // size of UVM_CREATE_RANGE_GROUP_PARAMS
 
         error!("LOOKATHERE!!! fd {}, request {:x}, val {:x}, size: {}", fd, request, val, size);
 

@@ -141,6 +141,15 @@ pub struct NV2080_CTRL_GR_GET_INFO_PARAMS {
     pub grRouteInfo: NV0080_CTRL_GR_ROUTE_INFO
 }
 
+#[repr(C)]
+#[repr(align(8))]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct NV2080_CTRL_CE_GET_CAPS_PARAMS {
+    pub ceEngineType: u32,
+    pub capsTblSize: u32,
+    pub capsTbl: u64
+}
+
 #[derive(Clone)]
 pub struct ProxyDevice(pub Arc<QRwLock<InodeSimpleAttributesInternal>>);
 
@@ -554,6 +563,7 @@ impl FileOperations for ProxyFileOperations {
             (1, 4),
             (128, 56),
             (8320, 4),
+            (37105, 48),
         ].iter().cloned().collect();
 
         if request == 0xc020462b {
@@ -632,11 +642,58 @@ impl FileOperations for ProxyFileOperations {
                 return Ok(());
             }
             else if data.cmd == 0x20801201 {
-                let grinfo: NV2080_CTRL_GR_GET_INFO_PARAMS = task.CopyInObj(data.params)?;
-                //let tbl = grinfo.grInfoList;
-                error!("num={}, ptr={:x}", grinfo.grInfoListSize, grinfo.grInfoList);                
+                let mut grinfo: NV2080_CTRL_GR_GET_INFO_PARAMS = task.CopyInObj(data.params)?;
+                let tbl = grinfo.grInfoList;
+                let tblsz = 8*grinfo.grInfoListSize as usize;
+                if tbl != 0 {
+                    let buf: Vec<u8> = task.CopyInVec(tbl, tblsz)?;
+                    grinfo.grInfoList = &buf[0] as *const _ as u64;
+                    let tmp = data.params;
+                    data.params = &grinfo as *const _ as u64;
+                    let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
+
+                    if res < 0 {
+                        error!("IOCTL failed!!! res {} ", res);
+                        return Err(Error::SysError(-res as i32));
+                    }
+
+                    task.CopyOutSlice(&buf, tbl, tblsz)?;
+                    grinfo.grInfoList = tbl;
+
+                    data.params = tmp;
+                    task.CopyOutObj(&grinfo, data.params)?;
+                    task.CopyOutObj(&data, val)?;
+                    error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
+                    return Ok(());
+                }
             }
-            else if data.cmd == 0x801401 || data.cmd == 0x801701 || data.cmd == 0x20800123 || data.cmd == 0x800201 {
+            else if data.cmd == 0x20802a01 {
+                let mut info: NV2080_CTRL_CE_GET_CAPS_PARAMS = task.CopyInObj(data.params)?;
+                let tbl = info.capsTbl;
+                let tblsz = 2;
+                if tbl != 0 {
+                    let buf: Vec<u8> = task.CopyInVec(tbl, tblsz)?;
+                    info.capsTbl = &buf[0] as *const _ as u64;
+                    let tmp = data.params;
+                    data.params = &info as *const _ as u64;
+                    let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
+
+                    if res < 0 {
+                        error!("IOCTL failed!!! res {} ", res);
+                        return Err(Error::SysError(-res as i32));
+                    }
+
+                    task.CopyOutSlice(&buf, tbl, tblsz)?;
+                    info.capsTbl = tbl;
+
+                    data.params = tmp;
+                    task.CopyOutObj(&info, data.params)?;
+                    task.CopyOutObj(&data, val)?;
+                    error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
+                    return Ok(());
+                }
+            }
+            else if data.cmd == 0x801401 || data.cmd == 0x801701 || data.cmd == 0x20800123 || data.cmd == 0x800201 || data.cmd == 0x801301 {
                 let mut cl: NV0080_CTRL_GPU_GET_CLASSLIST_PARAMS = task.CopyInObj(data.params)?;
                 let tbl = cl.classList;
                 error!("num={}, ptr={:x}", cl.numClasses, cl.classList);
@@ -692,25 +749,26 @@ impl FileOperations for ProxyFileOperations {
                     return Ok(());
                 }
             }
-            
-            //let mut data: NVOS54_PARAMETERS = task.CopyInObj(val)?;
-            let tmp = data.params;
-            let buffer: Vec<u8> = task.CopyInVec(data.params, data.paramsSize as usize)?;
-                
-            data.params = &buffer[0] as *const _ as u64;
-                
-            let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
-                
-            if res < 0 {
-                error!("IOCTL failed!!! res {} ", res);
-                return Err(Error::SysError(-res as i32));
-            }
 
-            task.CopyOutSlice(&buffer, tmp, data.paramsSize as usize)?;
-            data.params = tmp;
-            error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
-            task.CopyOutObj(&data, val)?;
-            return Ok(());
+            if data.params > 0 {
+                let tmp = data.params;
+                let buffer: Vec<u8> = task.CopyInVec(data.params, data.paramsSize as usize)?;
+                
+                data.params = &buffer[0] as *const _ as u64;
+                
+                let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
+                
+                if res < 0 {
+                    error!("IOCTL failed!!! res {} ", res);
+                    return Err(Error::SysError(-res as i32));
+                }
+
+                task.CopyOutSlice(&buffer, tmp, data.paramsSize as usize)?;
+                data.params = tmp;
+                error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
+                task.CopyOutObj(&data, val)?;
+                return Ok(());
+            }
         }
 
         let mut data: Vec<u8> = task.CopyInVec(val, size as usize)?;
