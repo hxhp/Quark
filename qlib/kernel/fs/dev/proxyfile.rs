@@ -562,6 +562,7 @@ impl FileOperations for ProxyFileOperations {
             (128, 56),
             (8320, 4),
             (37105, 48),
+            (50273, 0)
         ].iter().cloned().collect();
 
         if request == 0xc020462b {
@@ -580,21 +581,24 @@ impl FileOperations for ProxyFileOperations {
             match _x.get(&data.hClass) {
                 Some(sz) => {
                     error!("FOUND size for {}: {}", data.hClass, sz);
-                    let tmp = data.pAllocParms;
-                    let buffer: Vec<u8> = task.CopyInVec(data.pAllocParms, *sz as usize)?;
-                    data.pAllocParms = &buffer[0] as *const _ as u64;
-            
-                    let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
+                    if *sz > 0 {
+                        let tmp = data.pAllocParms;
+                        let buffer: Vec<u8> = task.CopyInVec(data.pAllocParms, *sz as usize)?;
+                        data.pAllocParms = &buffer[0] as *const _ as u64;
                 
-                    if res < 0 {
-                        error!("IOCTL failed!!! res {} ", res);
-                        return Err(Error::SysError(-res as i32));
-                    }
+                        let res = HostSpace::IoCtl(hostfd, request, &mut data as *const _ as u64);
+                    
+                        if res < 0 {
+                            error!("IOCTL failed!!! res {} ", res);
+                            return Err(Error::SysError(-res as i32));
+                        }
 
-                    task.CopyOutSlice(&buffer, tmp, *sz as usize)?;
-                    data.pAllocParms = tmp;
-                    task.CopyOutObj(&data, val)?;
-                    return Ok(());
+                        task.CopyOutSlice(&buffer, tmp, *sz as usize)?;
+                        data.pAllocParms = tmp;
+                        task.CopyOutObj(&data, val)?;
+                        return Ok(());
+                    }
+                    
                 },
                 None => {
                     error!("Cannot find pAllocParms size for hClass {}!!!", data.hClass);
