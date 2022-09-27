@@ -549,9 +549,7 @@ impl FileOperations for ProxyFileOperations {
             return Err(Error::SysError(SysErr::ENOTTY));
         }
 
-        let mut size: u32 = ((request >> 16) as u32) & 16383;
-        if request == 0x30000001 { size = 16; }
-        if request == 0x27 { size = 8; }
+        let size: u32 = ((request >> 16) as u32) & 16383;
 
         error!("LOOKATHERE!!! fd {}, request {:x}, val {:x}, size: {}", fd, request, val, size);
 
@@ -605,7 +603,7 @@ impl FileOperations for ProxyFileOperations {
         }
         else if request == 0xc020462a {
             let mut data: NVOS54_PARAMETERS = task.CopyInObj(val)?;
-            error!("NVOS54_PARAMETERS, BEFORE cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
+            error!("NVOS54_PARAMETERS, BEFORE cmd={:x}, params={:x}, paramsSize={}, status={}", data.cmd, data.params, data.paramsSize, data.status);
 
             if data.cmd == 0x101 {
                 let mut versions: NV0000_CTRL_SYSTEM_GET_BUILD_VERSION_PARAMS = task.CopyInObj(data.params)?;
@@ -765,7 +763,7 @@ impl FileOperations for ProxyFileOperations {
 
                 task.CopyOutSlice(&buffer, tmp, data.paramsSize as usize)?;
                 data.params = tmp;
-                error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, status={}", data.cmd, data.params, data.status);
+                error!("NVOS54_PARAMETERS, AFTER cmd={:x}, params={:x}, paramsSize={}, status={}", data.cmd, data.params, data.paramsSize, data.status);
                 task.CopyOutObj(&data, val)?;
                 return Ok(());
             }

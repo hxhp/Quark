@@ -447,7 +447,10 @@ impl FileOperations for NvidiaUvmFileOperations {
         if request == 0x27 { size = 8; } // size of UVM_PAGEABLE_MEM_ACCESS_PARAMS
         if request == 0x25 { size = 40; } // size of UVM_REGISTER_GPU_PARAMS
         if request == 0x37 { size = 20; } // size of UVM_DISABLE_SYSTEM_WIDE_ATOMICS_PARAMS
-        if request == 0x17 { size = 16; } // size of UVM_CREATE_RANGE_GROUP_PARAMS
+        if request == 0x17 || request == 0x18 { size = 16; } // size of UVM_CREATE_RANGE_GROUP_PARAMS,UVM_DESTROY_RANGE_GROUP_PARAMS
+        if request == 0x19 { size = 32; } // size of UVM_REGISTER_GPU_VASPACE_PARAMS
+        if request == 0x49 { size = 24; }
+        if request == 0x21 { size = 1200; }
 
         error!("LOOKATHERE!!! fd {}, request {:x}, val {:x}, size: {}", fd, request, val, size);
 
